@@ -6,6 +6,8 @@ let SCREEN_WIDTH = 0,
     DEVICE_MOTION = null,
     canvas = null,
     ctx = null,
+    bg = null,
+    player = null,
     track = [],
     entities = [];
 const KEY_EVENTS = {
@@ -109,27 +111,20 @@ function createScreen(width, height) {
 function isMobile() {
     return navigator.userAgent.match(/Android|webOS|iPhone|iPod|iPad|BlackBerry/i);
 }
-function isDeviceMotionAviable() {
-    return false;
+function isDeviceMotionAvailable() {
+    return window.DeviceOrientationEvent;
 }
 
 function setupScreen() {
     SCREEN_WIDTH = innerWidth;
     SCREEN_HEIGHT = innerHeight;
-    if (innerHeight > innerWidth) {
-        SCREEN_WIDTH = innerHeight;
-        SCREEN_HEIGHT = innerWidth;
+
+    if (canvas) {
+        canvas.remove();
     }
     [canvas, ctx] = createScreen(SCREEN_WIDTH, SCREEN_HEIGHT);
     ctx.font = "15px pixel";
     document.body.appendChild(canvas);
-}
-function checkSmallScreen() {
-    if (SCREEN_HEIGHT < 300) {
-        document.body.classList.add("rotate")
-        alert("screen heigth is so small");
-        alert("please lock your mobile to vertical and rotate the screen");
-    }
 }
 
 async function loadMedia() {
@@ -141,7 +136,7 @@ async function loadMedia() {
     });
 
     [audioBG] = await Promise.all([
-        loadAudio("./audio/Epic Action Rock.mp3"),
+        loadAudio("https://luis72353.github.io/extreme-motorcycle/audio/Epic Action Rock.mp3"),
         graphics.load(),
     ]);
 
@@ -177,7 +172,7 @@ function setupControls() {
 
 
     if (isMobile()) {
-        if (isDeviceMotionAviable()) {
+        if (isDeviceMotionAvailable()) {
             $("#A").ontouchstart = () => {
                 KEY_EVENTS.ArrowUp = 1;
                 KEY_EVENTS.ArrowDown = 0;
@@ -230,12 +225,15 @@ function setupControls() {
                 ++clicks;
                 if (clicks == 0) {
                     KEY_EVENTS.ArrowUp = 1;
+                    $("#C").innerHTML = "←";
                 } else if (clicks == 1) {
                     KEY_EVENTS.ArrowUp = 0;
                     KEY_EVENTS.ArrowDown = 1;
+                    $("#C").innerHTML = "→←";
                 } else if (clicks == 2) {
                     KEY_EVENTS.ArrowDown = 0;
                     clicks = -1;
+                    $("#C").innerHTML = "→"
                 }
             }
         }
@@ -251,6 +249,11 @@ function setupGameEvents() {
     }
     $("#howToPlay-next").onclick = () => {
         howToPlay();
+    }
+
+    window.onresize = () => {
+        setupScreen();
+        player.pos.x = innerWidth / 2;
     }
 }
 
@@ -311,7 +314,7 @@ class Player {
 
         this.score = 0;
         this.HI = 0;
-        this.inAirTime = 0;
+        this.airTime = 0;
 
         this._iskilled = false;
         this.name = "player";
@@ -352,13 +355,13 @@ class Player {
         }
 
         if (!this.grounded) {
-            this.inAirTime += dt;
+            this.airTime += dt;
         } else {
-            let scoreWon = (this.inAirTime / 200) | 0;
+            let scoreWon = (this.airTime / 200) | 0;
             if (scoreWon > 2) {
                 this.addScore(scoreWon);
             }
-            this.inAirTime = 0;
+            this.airTime = 0;
         }
 
         let angle = atan2((p2 - 15) - this.pos.y, (this.pos.x + 5) - this.pos.x);
@@ -374,7 +377,7 @@ class Player {
         if (this.rot > PI) {
             this.rot = -PI;
 
-            this.addScore(200, "front Back flip");
+            this.addScore(200, "front flip");
         }
         if (this.rot < -PI) {
             this.rot = PI;
@@ -402,7 +405,7 @@ class Player {
     }
 
     reset() {
-        this.pos.y = 0;
+        this.pos.y = innerHeight / 2;
         this.score = 0;
         this._iskilled = false;
         this.distance = 0;
@@ -439,7 +442,7 @@ class ParalaxBackground {
 }
 
 class Graphics {
-    constructor(src, path = "./") {
+    constructor(src, path = "https://luis72353.github.io/extreme-motorcycle/") {
         this._buffer = {};
         this.src = src;
         this.path = path;
@@ -510,7 +513,7 @@ const howToPlaySections = [
     <ul>
         <li>touch L to rotate right</li>
         <li>touch R to totate left</li>
-        <li>touch C to change the velocity or brake</li>
+        <li>touch "→" or "←" to go or brake</li>
     </ul>`],
     `
     <h3>PC Controlls (Arrows)</h3>
@@ -534,7 +537,7 @@ const howToPlaySections = [
                 <td>100</td>
             </tr>
             <tr>
-                <td>Front back flip</td>
+                <td>Front flip</td>
                 <td>200</td>
             </tr>
             <tr>
@@ -550,12 +553,11 @@ const howToPlaySections = [
 let howToPlayIndex = 0;
 function howToPlay() {
     if (howToPlayIndex == 0) {
-        $("#howToPlaySection").innerHTML = howToPlaySections[howToPlayIndex++][isDeviceMotionAviable() ? 0 : 1];
+        $("#howToPlaySection").innerHTML = howToPlaySections[howToPlayIndex++][isDeviceMotionAvailable() ? 0 : 1];
     } else {
         $("#howToPlaySection").innerHTML = howToPlaySections[howToPlayIndex++];
     }
     if (howToPlayIndex == howToPlaySections.length) {
         $("#howToPlay").remove();
-        checkSmallScreen();
     }
 }
